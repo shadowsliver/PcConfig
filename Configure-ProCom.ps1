@@ -1,5 +1,6 @@
 param (
-  [switch] $Quick
+  [switch] $Quick,
+  [switch] $Advanced
 )
 <#
 .SYNOPSIS
@@ -18,7 +19,7 @@ param (
   Version:        1.0
   Author:         Michel Michaux
   Creation Date:  23/10/2025
-  Purpose/Change: Version 1.0
+  Purpose/Change: Version 1.01
   
 .EXAMPLE
   Configure-ProCom.ps1
@@ -31,7 +32,7 @@ $AdminRequired = $true
 #----------------------------------------------------------[Declarations]----------------------------------------------------------
 
 $logo = @"                                                                                    
-                                                                                                             
+                                                                                                              
       ..   .......     ...  ....    .......           .......       .......      .. .......  ........         
       +#*=########+.   .##+####=  .*########=.     .+########+.  .=########*.    ##########+:########-        
       +####+:..:+###=  .#####-.  =###=:..-*###:  .=###+:..:+#:  :###*-..:=###+.  ####+:.:+#####=::-###+.      
@@ -44,7 +45,7 @@ $logo = @"
       +##-                                                                                                    
       +##-                                                                                                    
       +##-                                                                                                    
-                                                                                                             
+                                                                                                              
 "@
 
 $winget_programs = @(
@@ -89,6 +90,7 @@ function Run {
       Write-Host "6. Change device name"
       Write-Host "7. Reboot device"
       Write-Host "8. Quick mode"
+      Write-Host "9. Enable Num-Lock on startup"
       Write-Host "0. Exit"
       Write-Host ""
       $choice = Read-Host "Choice"
@@ -131,6 +133,9 @@ function functionPicker {
     8 {
       Quick_config
     }
+    9 {
+      ChoicePicker_Enable_Numlock_Boot
+    }
     default {
       Write-Host "Invalid choice. Please try again."
       Write-Host "`n"
@@ -139,16 +144,8 @@ function functionPicker {
 }
 
 function Quick_config {
-
-  if ($AdminRequired -eq $true) {
-    if (-not ([bool](New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))) {
-      Write-Host "This script must be run as an administrator elevated window. Exiting..." -ForegroundColor Red
-      exit
-    }
-  }
-
-  Write-Host "Installing basic software via Winget..."
-  foreach ($program in $winget_programs){
+  Write-Host "Installing basic software via Winget..." -BackgroundColor Green
+  foreach ($program in $winget_programs) {
     $parts = $program -split ":"
     $name = $parts[0]
     $id = $parts[1]
@@ -156,21 +153,24 @@ function Quick_config {
     Write-Host "Installing $name..."
     winget install --id $id -e --accept-source-agreements --accept-package-agreements
   }
-  Write-Host "Basic software installation completed.'n'n"
+  Write-Host "Basic software installation completed.'n'n" -BackgroundColor Green
 
-  Write-Host "Installing Microsoft Office 365 with Dutch configuration..."
+  Write-Host "Installing Microsoft Office 365 with Dutch configuration..." -BackgroundColor Green
   ChoicePicker_Office
-  Write-Host "Microsoft Office 365 installation completed.'n'n"
+  Write-Host "Microsoft Office 365 installation completed.'n'n" -BackgroundColor Green
 
-  Write-Host "Disabling password change on next login for current user: $env:USERNAME"
+  Write-Host "Disabling password change on next login for current user: $env:USERNAME" -BackgroundColor Green
   ChoicePicker_Current_User_No_pass
-  Write-Host "Password disabled for user '$env:USERNAME'.'n'n"
+  Write-Host "Password disabled for user '$env:USERNAME'.'n'n" -BackgroundColor Green
 
-  Write-Host "Updating all installed software via Winget..."
+  Write-Host "Updating all installed software via Winget..." -BackgroundColor Green
   ChoicePicker_Update
-  Write-Host "All software updates completed.'n'n"
+  Write-Host "All software updates completed.'n'n" -BackgroundColor Green
 
-  Write-Host "Quick configuration completed. A reboot is recommended.'n'n"
+  Write-Host "Enabling Num-Lock on startup..." -BackgroundColor Green
+  ChoicePicker_Enable_Numlock_Boot
+
+  Write-Host "Quick configuration completed. A reboot is recommended.'n'n" -BackgroundColor Green
 }
 
 function ChoicePicker_Software_Install {
@@ -275,14 +275,54 @@ function ChoicePicker_Change_Device_Name {
   
 }
 
+function ChoicePicker_Enable_Numlock_Boot {
+  Write-Host "Enabling Num-Lock on startup..."
+  Set-ItemProperty -Path 'Registry::HKU\.DEFAULT\Control Panel\Keyboard' -Name "InitialKeyboardIndicators" -Value "2"
+  Write-Host "Num-Lock enabled on startup.'n'n"  
+}
+
+function Open-Windows-Tool {
+  Invoke-WebRequest -useb https://christitus.com/win | Invoke-Expression
+}
+
 #-----------------------------------------------------------[Execution]------------------------------------------------------------
 winget source update
 Clear-Host
 Write-Host $logo -foregroundColor DarkMagenta -BackgroundColor White
 
-if ($Quick -eq $true) {
-  Quick_config
+# Desired command to re-run
+$command = (Get-History | Select-Object -Last 1).CommandLine
+
+# Check if running as admin
+if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
+  # Relaunch as admin
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = 'powershell.exe'
+  $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `$command = '$command'; Invoke-Expression `$command"
+  $psi.Verb = 'runas'
+  try {
+    [System.Diagnostics.Process]::Start($psi)
+  }
+  catch {
+    Write-Host "This script needs to be run in administrative elevation."
+  }
+  exit
 }
 else {
-  Run
+  if ($Quick -eq $true) {
+    Quick_config
+  }
+  elseif ($Advanced -eq $true) {
+    Open-Windows-Tool
+  }
+  elseif ($Advanced -eq $true -and $Quick -eq $true) {
+    Open-Windows-Tool
+  }
+  else {
+    Run
+  }
 }
+
+
+
+

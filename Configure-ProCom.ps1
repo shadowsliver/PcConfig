@@ -26,7 +26,7 @@ param (
 #>
 
 #---------------------------------------------------------[Initialisations]--------------------------------------------------------
-$AdminRequired = $false
+$AdminRequired = $true
 
 #----------------------------------------------------------[Declarations]----------------------------------------------------------
 
@@ -51,7 +51,8 @@ $winget_programs = @(
   "Google Chrome:Google.Chrome",
   "VLC Player:VideoLAN.VLC",
   "E-ID Middleware:BelgianGovernment.eIDmiddleware",
-  "E-ID Viewer:BelgianGovernment.eIDViewer"
+  "E-ID Viewer:BelgianGovernment.eIDViewer",
+  "Adobe Acrobat Reader:Adobe.Acrobat.Reader.64-bit"
 )
 
 # Create Office configuration XML

@@ -7,4 +7,4 @@ if %errorlevel% neq 0 (
     exit /b
 )
 :: Run your PowerShell script
-powershell.exe -ExecutionPolicy Bypass -File "Configure-ProCom.ps1"
+powershell.exe -ExecutionPolicy Bypass -File "%~dp0Configure-ProCom.ps1" %*

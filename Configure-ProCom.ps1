@@ -153,6 +153,8 @@ function functionPicker {
 
 function Quick_config {
   Write-Host "Starting quick configuration..." -ForegroundColor Black backgroundColor White
+  Write-Host ""
+
   Write-Host "Installing basic software via Winget..." --ForegroundColor Yellow
   foreach ($program in $winget_programs) {
     $parts = $program -split ":"
@@ -162,23 +164,28 @@ function Quick_config {
     Write-Host "Installing $name..."
     winget install --id $id -e --accept-source-agreements --accept-package-agreements
   }
-  Write-Host "Basic software installation completed.'n'n" -ForegroundColor Green
+  Write-Host "Basic software installation completed." -ForegroundColor Green
+  Write-Host ""
 
   Write-Host "Installing Microsoft Office 365 with Dutch configuration..." -ForegroundColor Yellow
   ChoicePicker_Office
-  Write-Host "Microsoft Office 365 installation completed.'n'n" -ForegroundColor Green
+  Write-Host "Microsoft Office 365 installation completed." -ForegroundColor Green
+  Write-Host ""
 
   Write-Host "Disabling password change on next login for current user: $env:USERNAME" -ForegroundColor Yellow
   ChoicePicker_Current_User_No_pass
-  Write-Host "Password disabled for user '$env:USERNAME'.'n'n" -ForegroundColor Green
+  Write-Host "Password disabled for user '$env:USERNAME'." -ForegroundColor Green
+  Write-Host ""
 
   Write-Host "Updating all installed software via Winget..." -ForegroundColor Yellow
   ChoicePicker_Update
-  Write-Host "All software updates completed.'n'n" -ForegroundColor Green
+  Write-Host "All software updates completed." -ForegroundColor Green
+  Write-Host ""
 
   Write-Host "Setting up basic machine configuration..." -ForegroundColor Yellow
   ChoicePicker_Basic_Config
-  Write-Host "Basic machine configuration completed.'n'n" -ForegroundColor Green
+  Write-Host "Basic machine configuration completed." -ForegroundColor Green
+  Write-Host ""
 
   Write-Host "Quick configuration completed. A reboot is recommended.'n'n" -ForegroundColor Green backgroundColor White
 }
@@ -366,7 +373,7 @@ function Debug {
       }
       2 {
         Write-Host "Updating Application Installer via Winget..."
-        winget upgrade --id Microsoft.DesktopAppInstaller
+        winget upgrade Microsoft.AppInstaller
       }
       3 {
         Write-Host "See Application Installer via Microsoft Store..."

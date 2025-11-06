@@ -48,6 +48,7 @@ $logo = @"
                                                                                                               
 "@
 
+# Hardcoded for protability, can be placed in a config file later
 $winget_programs = @(
   "Google Chrome:Google.Chrome",
   "VLC Player:VideoLAN.VLC",
@@ -55,6 +56,12 @@ $winget_programs = @(
   "E-ID Viewer:BelgianGovernment.eIDViewer",
   "Adobe Acrobat Reader:Adobe.Acrobat.Reader.64-bit"
 )
+
+$office_lnk = 
+"Word.lnk",
+"Excel.lnk",
+"PowerPoint.lnk",
+"Outlook (classic).lnk"
 
 # Create Office configuration XML
 $OfficeXML = @"
@@ -135,7 +142,7 @@ function functionPicker {
     9 {
       Quick_config
     }
-    9000 {
+    "wintool" {
       Open-Windows-Tool
     }
     "debug" {
@@ -269,7 +276,16 @@ function ChoicePicker_Office {
 
   Remove-Item $setupPath -Force -Recurse
   Remove-Item $xmlPath -Force -Recurse
-
+  
+  
+  Write-Host "Creating desktop and start menu shortcuts for office..."
+  # Create Desktop shortcuts
+  foreach ($lnk in $office_lnk) {
+    $source = [System.IO.Path]::Combine("C:\ProgramData\Microsoft\Windows\Start Menu\Programs", $lnk)
+    $destination = [System.IO.Path]::Combine($env:USERPROFILE, "Desktop", $lnk)
+    Copy-Item -Path $source -Destination $destination
+  }
+  
   Write-Host "Microsoft Office 365 installation completed.'n'n"
 }
 
@@ -387,8 +403,8 @@ function Debug {
         Write-Host "Invalid choice. Please try again."
         Write-Host "`n"
       }
-  }  
-}
+    }  
+  }
 }
 
 #-----------------------------------------------------------[Execution]------------------------------------------------------------
@@ -396,37 +412,27 @@ winget source update
 Clear-Host
 Write-Host $logo -foregroundColor DarkMagenta -BackgroundColor White
 
-# Desired command to re-run
-$command = (Get-History | Select-Object -Last 1).CommandLine
+# Check if the script is running with administrative privileges
+if ($AdminRequired -eq $true) {
+  if (-not ([bool](New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))) {
+    Write-Host "This script must be run as an administrator elevated window." -ForegroundColor Red
+    Write-Host "Press any key to terminate the script..."
+    $x = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit
+  }
+}
 
-# Check if running as admin
-if (-not ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-  # Relaunch as admin
-  $psi = New-Object System.Diagnostics.ProcessStartInfo
-  $psi.FileName = 'powershell.exe'
-  $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -Command `$command = '$command'; Invoke-Expression `$command"
-  $psi.Verb = 'runas'
-  try {
-    [System.Diagnostics.Process]::Start($psi)
-  }
-  catch {
-    Write-Host "This script needs to be run in administrative elevation."
-  }
-  exit
+if ($Quick -eq $true) {
+  Quick_config
+}
+elseif ($Advanced -eq $true) {
+  Open-Windows-Tool
+}
+elseif ($Advanced -eq $true -and $Quick -eq $true) {
+  Open-Windows-Tool
 }
 else {
-  if ($Quick -eq $true) {
-    Quick_config
-  }
-  elseif ($Advanced -eq $true) {
-    Open-Windows-Tool
-  }
-  elseif ($Advanced -eq $true -and $Quick -eq $true) {
-    Open-Windows-Tool
-  }
-  else {
-    Run
-  }
+  Run
 }
 
 

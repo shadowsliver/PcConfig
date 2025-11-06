@@ -88,9 +88,9 @@ function Run {
       Write-Host "4. Disable password change on next login of current user"
       Write-Host "5. Update all software via Winget"
       Write-Host "6. Change device name"
-      Write-Host "7. Reboot device"
-      Write-Host "8. Quick mode"
-      Write-Host "9. Enable Num-Lock on startup"
+      Write-Host "7. Enable Windows updates and reboot"
+      Write-Host "8. Set up basic machine configuration"
+      Write-Host "9. Quick mode"
       Write-Host "0. Exit"
       Write-Host ""
       $choice = Read-Host "Choice"
@@ -127,14 +127,22 @@ function functionPicker {
       ChoicePicker_Change_Device_Name
     }
     7 {
-      Write-Host "Rebooting device..."
-      Restart-Computer
+      ChoicePicker_Windows_Update
     }
     8 {
-      Quick_config
+      ChoicePicker_Basic_Config
     }
     9 {
-      ChoicePicker_Enable_Numlock_Boot
+      Quick_config
+    }
+    9000 {
+      Open-Windows-Tool
+    }
+    "debug" {
+      Debug
+    }
+    10 {
+      Write-Host "Option 10 selected."
     }
     default {
       Write-Host "Invalid choice. Please try again."
@@ -144,7 +152,8 @@ function functionPicker {
 }
 
 function Quick_config {
-  Write-Host "Installing basic software via Winget..." -BackgroundColor Green
+  Write-Host "Starting quick configuration..." -ForegroundColor Black backgroundColor White
+  Write-Host "Installing basic software via Winget..." --ForegroundColor Yellow
   foreach ($program in $winget_programs) {
     $parts = $program -split ":"
     $name = $parts[0]
@@ -153,24 +162,25 @@ function Quick_config {
     Write-Host "Installing $name..."
     winget install --id $id -e --accept-source-agreements --accept-package-agreements
   }
-  Write-Host "Basic software installation completed.'n'n" -BackgroundColor Green
+  Write-Host "Basic software installation completed.'n'n" -ForegroundColor Green
 
-  Write-Host "Installing Microsoft Office 365 with Dutch configuration..." -BackgroundColor Green
+  Write-Host "Installing Microsoft Office 365 with Dutch configuration..." -ForegroundColor Yellow
   ChoicePicker_Office
-  Write-Host "Microsoft Office 365 installation completed.'n'n" -BackgroundColor Green
+  Write-Host "Microsoft Office 365 installation completed.'n'n" -ForegroundColor Green
 
-  Write-Host "Disabling password change on next login for current user: $env:USERNAME" -BackgroundColor Green
+  Write-Host "Disabling password change on next login for current user: $env:USERNAME" -ForegroundColor Yellow
   ChoicePicker_Current_User_No_pass
-  Write-Host "Password disabled for user '$env:USERNAME'.'n'n" -BackgroundColor Green
+  Write-Host "Password disabled for user '$env:USERNAME'.'n'n" -ForegroundColor Green
 
-  Write-Host "Updating all installed software via Winget..." -BackgroundColor Green
+  Write-Host "Updating all installed software via Winget..." -ForegroundColor Yellow
   ChoicePicker_Update
-  Write-Host "All software updates completed.'n'n" -BackgroundColor Green
+  Write-Host "All software updates completed.'n'n" -ForegroundColor Green
 
-  Write-Host "Enabling Num-Lock on startup..." -BackgroundColor Green
-  ChoicePicker_Enable_Numlock_Boot
+  Write-Host "Setting up basic machine configuration..." -ForegroundColor Yellow
+  ChoicePicker_Basic_Config
+  Write-Host "Basic machine configuration completed.'n'n" -ForegroundColor Green
 
-  Write-Host "Quick configuration completed. A reboot is recommended.'n'n" -BackgroundColor Green
+  Write-Host "Quick configuration completed. A reboot is recommended.'n'n" -ForegroundColor Green backgroundColor White
 }
 
 function ChoicePicker_Software_Install {
@@ -275,14 +285,103 @@ function ChoicePicker_Change_Device_Name {
   
 }
 
-function ChoicePicker_Enable_Numlock_Boot {
-  Write-Host "Enabling Num-Lock on startup..."
+
+function ChoicePicker_Basic_Config {
+  
+  Write-Host "Enabling Num-Lock on startup..." -ForegroundColor Green
   Set-ItemProperty -Path 'Registry::HKU\.DEFAULT\Control Panel\Keyboard' -Name "InitialKeyboardIndicators" -Value "2"
-  Write-Host "Num-Lock enabled on startup.'n'n"  
+  
+
+  Write-Host "Setting power plan to High Performance and adjusting monitor/standby timeouts..." -ForegroundColor Green
+  # Set power plan to High Performance
+  powercfg -setactive SCHEME_MIN
+  
+  # Set monitor timeout on AC power to 30 minutes
+  powercfg /change monitor-timeout-ac 30
+
+  # Set monitor timeout on battery (DC) power to never
+  powercfg /change monitor-timeout-dc 0
+
+  # Set standby timeout on AC power to never
+  powercfg /change standby-timeout-ac 0
+
+  # Set standby timeout on battery (DC) power to never
+  powercfg /change standby-timeout-dc 0
+
+  #Set Hard disk timeout on AC power to never
+  #Set Hard disk timeout on battery (DC) power to never
+  powercfg -change -disk-timeout-ac 0
+  powercfg -change -disk-timeout-dc 0
+
+
+  Write-Host "Disabling Hibernation and Fast Startup..." -ForegroundColor Green
+  # Schakel Snel Opstarten uit
+  powercfg /hibernate off
+
+  Write-Host "Enabling System Restore and creating a restore point..." -ForegroundColor Green
+  # Enable System Restore if not already enabled
+  # Enable system protection for C: drive
+  Enable-ComputerRestore -Drive "C:\"
+
+
+  Write-Host "Basic machine configuration completed.'n'n" -BackgroundColor Green
 }
 
 function Open-Windows-Tool {
   Invoke-WebRequest -useb https://christitus.com/win | Invoke-Expression
+}
+
+function ChoicePicker_Windows_Update {
+  Write-Host "Running Windows Update to install all pending updates..." -ForegroundColor Green
+  # 1. Install the module (if not already installed)
+  Install-Module -Name PSWindowsUpdate -Force
+
+  # 2. Import the module
+  Import-Module PSWindowsUpdate
+
+  # 3. Run all available updates, including optional ones
+  Get-WindowsUpdate -Install -AcceptAll -AutoReboot
+}
+
+function Debug {
+  $check = $true
+
+  While ( $check -eq $true) {
+    Write-Host "DEBUG MODE for application installer (Winget). Choose 0 to quit or press CTRL+C." -ForegroundColor Red -BackgroundColor Yellow
+    Write-Host "1. Reregister Application Installer"
+    Write-Host "2. Winget Update App Installer"
+    Write-Host "3. See Application Installer via Microsoft Store..."
+    Write-Host "4. Reinstall Application Installer"
+    Write-Host ""
+    $choice = Read-Host "Choice"
+
+    switch ($choice) {
+      0 {
+        Write-Host "Exiting debug mode..."
+        $check = $false
+      }
+      1 {
+        Write-Host "Reregistering Application Installer..."
+        Get-AppxPackage Microsoft.DesktopAppInstaller | ForEach-Object { Add-AppxPackage -DisableDevelopmentMode -Register "$($_.InstallLocation)\AppXManifest.xml" }
+      }
+      2 {
+        Write-Host "Updating Application Installer via Winget..."
+        winget upgrade --id Microsoft.DesktopAppInstaller
+      }
+      3 {
+        Write-Host "See Application Installer via Microsoft Store..."
+        Start-Process "ms-windows-store://pdp/?productid=9NBLGGH4NNS1"
+      }
+      4 {
+        Invoke-WebRequest -Uri https://aka.ms/getwinget -OutFile .\WinGetSetup.exe
+        Start-Process .\WinGetSetup.exe
+      }
+      default {
+        Write-Host "Invalid choice. Please try again."
+        Write-Host "`n"
+      }
+  }  
+}
 }
 
 #-----------------------------------------------------------[Execution]------------------------------------------------------------

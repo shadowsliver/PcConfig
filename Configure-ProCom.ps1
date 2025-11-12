@@ -1,6 +1,7 @@
 param (
   [switch] $Quick,
-  [switch] $Advanced
+  [switch] $Advanced,
+  [switch] $Debug
 )
 <#
 .SYNOPSIS
@@ -77,33 +78,26 @@ $OfficeXML = @"
 "@
 
 #-----------------------------------------------------------[Functions]------------------------------------------------------------
-function Run {
-  # Check if the script is running with administrative privileges
-  if ($AdminRequired -eq $true) {
-    if (-not ([bool](New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))) {
-      Write-Host "This script must be run as an administrator elevated window. Exiting..." -ForegroundColor Red
-      exit
-    }
-  }
-    
-  :outerLoop while ($true) {
-    :innerLoop While ( $true) {
-      Write-Host "Config script - choose an option. Choose 0 to quit or press CTRL+C."
-      Write-Host "1. Install basic software"
-      Write-Host "2. Install Microsoft Office 365 NL"
-      Write-Host "3. Create local admin user"
-      Write-Host "4. Disable password change on next login of current user"
-      Write-Host "5. Update all software via Winget"
-      Write-Host "6. Change device name"
-      Write-Host "7. Enable Windows updates and reboot"
-      Write-Host "8. Set up basic machine configuration"
-      Write-Host "9. Quick mode"
-      Write-Host "0. Exit"
-      Write-Host ""
-      $choice = Read-Host "Choice"
+function Run {  
+  While ( $true) {
+    Write-Host "Config script - choose an option. Choose 0 to quit or press CTRL+C."
+    Write-Host "1. Install basic software"
+    Write-Host "2. Install Microsoft Office 365 NL"
+    Write-Host "3. Create local admin user"
+    Write-Host "4. Disable password change on next login of current user"
+    Write-Host "5. Update all software via Winget"
+    Write-Host "6. Change device name"
+    Write-Host "7. Enable Windows updates and reboot"
+    Write-Host "8. Set up basic machine configuration"
+    Write-Host "9. Quick mode"
+    Write-Host "10. Rename local user account name & rename user folder (Other user only!)"
+    Write-host "11. Adjust user performance profile settings"
+    #Write-Host "11. Install AD Components for Active Directory management related commands/scripts"
+    Write-Host "0. Exit"
+    Write-Host ""
+    $choice = Read-Host "Choice"
 
-      functionPicker -choice $choice
-    }
+    functionPicker -choice $choice
   }
 }
 
@@ -142,6 +136,15 @@ function functionPicker {
     9 {
       Quick_config
     }
+    10 {
+      functionPicker_Rename_User
+    }
+    11 {
+      ChoicePicker_Adjust_User_Performance_Profile
+    }
+    <# 11 {
+      ChoicePicker_Enable_AD_Tools
+    } #>
     "wintool" {
       Open-Windows-Tool
     }
@@ -293,6 +296,7 @@ function ChoicePicker_Current_User_No_pass {
   Write-Host "Disabling password change upon next login for current user: $env:USERNAME"
   #Set-LocalUser -Name $env:USERNAME -Password (ConvertTo-SecureString "" -AsPlainText -Force) -PasswordNeverExpires $true
   net user $env:USERNAME /logonpasswordchg:no
+  net user $env:USERNAME /-PasswordNeverExpires:yes
   Write-Host "Password disabled for user '$env:USERNAME'.'n'n"
 }
 
@@ -339,7 +343,9 @@ function ChoicePicker_Basic_Config {
 
   Write-Host "Disabling Hibernation and Fast Startup..." -ForegroundColor Green
   # Schakel Snel Opstarten uit
-  powercfg /hibernate off
+  #powercfg /hibernate off -> This also disables hibernation
+  #HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager\Power
+  Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power' -Name 'HiberbootEnabled' -Value 0
 
   Write-Host "Enabling System Restore and creating a restore point..." -ForegroundColor Green
   # Enable System Restore if not already enabled
@@ -407,22 +413,137 @@ function Debug {
   }
 }
 
+function functionPicker_Rename_User {
+  Write-Host "Listing all (enabled) local users:" -ForegroundColor Green
+  get-LocalUser | Where-Object { $_.Enabled -eq $true } | Select-Object -Property Name
+  
+  
+  $user = Read-Host "Enter the current username of the local user to rename, press 0 to cancel"
+
+  if ($user -eq "0") {
+    Write-Host "Operation cancelled by user." -ForegroundColor Yellow
+    return
+  }
+
+  $newUser = Read-Host "Enter the new username for the local user, press 0 to cancel"
+
+  if ($newUser -eq "0") {
+    Write-Host "Operation cancelled by user." -ForegroundColor Yellow
+    return
+  }
+  elseif ($user -eq "" -or $newUser -eq "") {
+    Write-Host "Invalid input. Both current and new usernames must be provided." -ForegroundColor Red
+    return
+  }
+  elseif ($user -eq $env:USERNAME) {
+    Write-Host "You cannot rename the currently logged-in user. Please log in as a different user and try again." -ForegroundColor Red
+    return
+  }
+
+  # Define paths
+  $oldProfilePath = "C:\Users\$user"
+  $newProfilePath = "C:\Users\$newUser"
+  
+  # 1. Rename the local user account
+  Rename-LocalUser -Name $user -NewName $newUser
+
+  # 2. Rename the user profile folder
+  Rename-Item -Path $oldProfilePath -NewName $newProfilePath
+  # 3. Get the SID of the renamed user
+  $sid = (Get-LocalUser -Name $newUser | ForEach-Object {
+      $user = $_
+      $obj = New-Object System.Security.Principal.NTAccount($user.Name)
+      $sid = $obj.Translate([System.Security.Principal.SecurityIdentifier])
+      $sid.Value
+    })
+
+  # 4. Update the registry to point to the new profile path
+  $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$sid"
+  Set-ItemProperty -Path $regPath -Name "ProfileImagePath" -Value $newProfilePath
+
+  Write-Host "User and profile folder renamed successfully. Please reboot the system." -ForegroundColor Green
+
+
+}
+
+#Do not use, have to properly research which versions is used for what and where
+function ChoicePicker_Enable_AD_Tools {
+  if ($PSVersionTable.PSEdition -eq 'Core') {
+    Write-Host "Running in PowerShell Core"
+    Install-Module -Name WindowsCompatibility
+    Import-Module -Name WindowsCompatibility
+    Import-WinModule -Name ActiveDirectory
+  }
+  elseif ($PSVersionTable.PSEdition -eq 'Desktop') {
+    Write-Host "Running in Windows PowerShell"
+    Write-Host "Installing Active Directory components..." -ForegroundColor Green
+    # Install RSAT tools for Active Directory
+    Add-WindowsCapability -Online -Name Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0
+  }
+  else {
+    Write-Host "Unknown PowerShell edition, please check manually." -ForegroundColor Red
+  }
+}
+
+function ChoicePicker_Adjust_User_Performance_Profile {
+  Write-Host "Adjusting user performance profile settings..." -ForegroundColor Green
+
+  $check = $true
+  While ( $check -eq $true) {
+    Write-host "Select the desired performance profile, press 0 to quit"
+    Write-Host "1. Let windows choose what's best"
+    Write-Host "2. Adjust for best appearance"
+    Write-Host "3. Adjust for best performance"
+    $profileChoice = Read-Host "Choice"
+    if ($profileChoice -is [int] -and $profileChoice -in 1..3) {
+      $check = $false
+      <#
+      - 0 = Let Windows choose what's best
+      - 1 = Adjust for best appearance
+      - 2 = Adjust for best performance
+      #>
+      $profileChoice = [int]$profileChoice - 1
+    }
+    elseif ($profileChoice -eq 0) {
+      Write-Host "Operation cancelled by user." -ForegroundColor Yellow
+      return
+    }
+    else {
+      Write-Host "Invalid choice. Please try again." -ForegroundColor Red
+    }
+  }
+  
+  # Registry path for visual effects settings
+  $regPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects"
+
+  # Set VisualFXSetting based on user choice
+  Set-ItemProperty -Path $regPath -Name VisualFXSetting -Value $profileChoice
+
+  # Apply changes by refreshing user settings
+  RUNDLL32.EXE user32.dll, UpdatePerUserSystemParameters
+  
+  Write-Host "User performance profile adjusted." -ForegroundColor Green
+}
+
 #-----------------------------------------------------------[Execution]------------------------------------------------------------
-winget source update
 Clear-Host
 Write-Host $logo -foregroundColor DarkMagenta -BackgroundColor White
+Write-Host "This script is for advanced users only. Use at your own risk!" -ForegroundColor Red
+Write-Host ""
 
 # Check if the script is running with administrative privileges
 if ($AdminRequired -eq $true) {
   if (-not ([bool](New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))) {
     Write-Host "This script must be run as an administrator elevated window." -ForegroundColor Red
     Write-Host "Press any key to terminate the script..."
+    #$x is to avoid outputting the key pressed to the console
     $x = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit
   }
 }
 
 if ($Quick -eq $true) {
+  winget source update
   Quick_config
 }
 elseif ($Advanced -eq $true) {
@@ -431,10 +552,9 @@ elseif ($Advanced -eq $true) {
 elseif ($Advanced -eq $true -and $Quick -eq $true) {
   Open-Windows-Tool
 }
+elseif ($Debug -eq $true) {
+  Debug
+}
 else {
   Run
 }
-
-
-
-

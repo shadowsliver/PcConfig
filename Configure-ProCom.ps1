@@ -537,7 +537,7 @@ if ($AdminRequired -eq $true) {
     Write-Host "This script must be run as an administrator elevated window." -ForegroundColor Red
     Write-Host "Press any key to terminate the script..."
     #$x is to avoid outputting the key pressed to the console
-    $x = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | Out-Null
     exit
   }
 }

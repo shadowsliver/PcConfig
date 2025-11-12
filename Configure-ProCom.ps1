@@ -536,7 +536,6 @@ if ($AdminRequired -eq $true) {
   if (-not ([bool](New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))) {
     Write-Host "This script must be run as an administrator elevated window." -ForegroundColor Red
     Write-Host "Press any key to terminate the script..."
-    #$x is to avoid outputting the key pressed to the console
     $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | Out-Null
     exit
   }

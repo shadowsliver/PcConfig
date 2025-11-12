@@ -486,9 +486,16 @@ function ChoicePicker_Enable_AD_Tools {
 }
 
 function ChoicePicker_Adjust_User_Performance_Profile {
+  Param (
+    [switch]$quick
+  )
+  $profileChoice = 2
   Write-Host "Adjusting user performance profile settings..." -ForegroundColor Green
 
   $check = $true
+  if( $quick -eq $true) {
+    $check = $false
+  }
   While ( $check -eq $true) {
     Write-host "Select the desired performance profile, press 0 to quit"
     Write-Host "1. Let windows choose what's best"
@@ -522,7 +529,7 @@ function ChoicePicker_Adjust_User_Performance_Profile {
   # Apply changes by refreshing user settings
   RUNDLL32.EXE user32.dll, UpdatePerUserSystemParameters
   
-  Write-Host "User performance profile adjusted." -ForegroundColor Green
+  Write-Host "User performance profile adjusted. Please reboot for all changes to apply." -ForegroundColor Green
 }
 
 #-----------------------------------------------------------[Execution]------------------------------------------------------------

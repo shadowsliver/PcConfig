@@ -77,6 +77,12 @@ $OfficeXML = @"
 </Configuration>
 "@
 
+$knownBugs = @(
+  "Disabling taskbar Widgets via registry is currently blocked by Windows security, need to find a workaround.",
+  "Sometimes quick mode does not install all software if run through the batch shortcut.",
+  "Some minor info displays may not show up correctly in certain Windows versions.",
+  "If a windows update fails, the system may not reboot automatically. The update failing is a microsof/windows issue, not a script issue."
+)
 #-----------------------------------------------------------[Functions]------------------------------------------------------------
 function Run {  
   While ( $true) {
@@ -163,6 +169,14 @@ function functionPicker {
 }
 
 function Quick_config {
+  Write-Host "Disclaimer: Quick configuration will apply a predefined set of configurations without user interaction." -ForegroundColor Red
+  Write-Host "Currently known bugs/issues with quick configuration:" -ForegroundColor Red
+  foreach ($bug in $knownBugs) {
+    Write-Host "- $bug" -ForegroundColor Red
+  }
+  Press_To_Continue -Message "Press any key to continue with quick configuration or CTRL+C to abort..."
+  Write-Host ""
+
   Write-Host "Starting quick configuration..." -ForegroundColor Black backgroundColor White
   Write-Host ""
 
@@ -610,6 +624,14 @@ function ChoicePicker_Configure_IPv4 {
   }
 }
 
+function Press_To_Continue {
+  param(
+    $Message = "Press any key to continue..."
+  )
+  Write-Host $message
+  $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | Out-Null
+}
+
 #-----------------------------------------------------------[Execution]------------------------------------------------------------
 Clear-Host
 Write-Host $logo -foregroundColor DarkMagenta -BackgroundColor White
@@ -620,8 +642,7 @@ Write-Host ""
 if ($AdminRequired -eq $true) {
   if (-not ([bool](New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))) {
     Write-Host "This script must be run as an administrator elevated window." -ForegroundColor Red
-    Write-Host "Press any key to terminate the script..."
-    $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | Out-Null
+    Press_To_Continue -Message "Press any key to exit..."
     exit
   }
 }

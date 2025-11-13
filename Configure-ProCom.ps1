@@ -93,8 +93,8 @@ function Run {
     Write-Host "10. Rename local user account name & rename user folder (Other user only!)"
     Write-host "11. Adjust user performance profile settings"
     #Write-Host "11. Install AD Components for Active Directory management related commands/scripts"
-    Write-Host "DEBUG: Type 'debug' to enter debug mode for Winget"
     Write-Host "0. Exit"
+    Write-Host "DEBUG: Type 'debug' to enter debug mode for Winget"
     Write-Host ""
     $choice = Read-Host "Choice"
 

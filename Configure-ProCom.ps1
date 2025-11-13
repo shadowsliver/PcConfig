@@ -155,9 +155,6 @@ function functionPicker {
     "debug" {
       Debug
     }
-    10 {
-      Write-Host "Option 10 selected."
-    }
     default {
       Write-Host "Invalid choice. Please try again."
       Write-Host "`n"
@@ -167,6 +164,16 @@ function functionPicker {
 
 function Quick_config {
   Write-Host "Starting quick configuration..." -ForegroundColor Black backgroundColor White
+  Write-Host ""
+
+  Write-Host "Setting up basic machine configuration..." -ForegroundColor Yellow
+  ChoicePicker_Basic_Config
+  Write-Host "Basic machine configuration completed." -ForegroundColor Green
+  Write-Host ""
+
+  Write-Host "Adjusting user performance profile settings for best performance..." -ForegroundColor Yellow
+  ChoicePicker_Adjust_User_Performance_Profile -quick
+  Write-Host "User performance profile adjusted." -ForegroundColor Green
   Write-Host ""
 
   Write-Host "Installing basic software via Winget..." --ForegroundColor Yellow
@@ -196,12 +203,13 @@ function Quick_config {
   Write-Host "All software updates completed." -ForegroundColor Green
   Write-Host ""
 
-  Write-Host "Setting up basic machine configuration..." -ForegroundColor Yellow
-  ChoicePicker_Basic_Config
-  Write-Host "Basic machine configuration completed." -ForegroundColor Green
+  Write-Host "Applying windows updates..." -ForegroundColor Yellow
+  ChoicePicker_Windows_Update
+  Write-Host "Windows update process done. If there were any update errors the system wasn't rebooted" -ForegroundColor Green
+  
+  Write-Host "-----------------------------------------" -ForegroundColor DarkMagenta backgroundColor White
+  Write-Host "Quick configuration completed. A reboot is recommended." -ForegroundColor Green backgroundColor White
   Write-Host ""
-
-  Write-Host "Quick configuration completed. A reboot is recommended.'n'n" -ForegroundColor Green backgroundColor White
 }
 
 function ChoicePicker_Software_Install {
@@ -256,13 +264,14 @@ function ChoicePicker_User {
   # Add the user to the Administrators group
   Add-LocalGroupMember -Group "Administrators" -Member $user
 
-  Write-Host "Local admin user '$user' created successfully.'n'n"
+  Write-Host "Local admin user '$user' created successfully."
 }
 
 function ChoicePicker_Update {
   Write-Host "Updating all installed software via Winget..."
   winget upgrade --all --silent --accept-source-agreements --accept-package-agreements --include-unknown
-  Write-Host "All software updates completed.'n'n"
+  Write-Host "All software updates completed."
+  Write-Host ""
 }
 
 function ChoicePicker_Office {
@@ -293,25 +302,26 @@ function ChoicePicker_Office {
     Copy-Item -Path $source -Destination $destination
   }
   
-  Write-Host "Microsoft Office 365 installation completed.'n'n"
+  Write-Host "Microsoft Office 365 installation completed."
+  Write-Host ""
 }
 
 function ChoicePicker_Current_User_No_pass {
   Write-Host "Disabling password change upon next login for current user: $env:USERNAME"
   #Set-LocalUser -Name $env:USERNAME -Password (ConvertTo-SecureString "" -AsPlainText -Force) -PasswordNeverExpires $true
   net user $env:USERNAME /logonpasswordchg:no
-  net user $env:USERNAME /-PasswordNeverExpires:yes
-  Write-Host "Password disabled for user '$env:USERNAME'.'n'n"
+  Write-Host "Password disabled for user '$env:USERNAME'."
 }
 
 function ChoicePicker_Change_Device_Name {
   $newName = Read-Host "Enter the new device name"
   if ($newName -ne "") {
     Rename-Computer -NewName $newName -Force -Restart:$false
-    Write-Host "Device name changed to '$newName'. A restart is required for the change to take effect.'n'n"
+    Write-Host "Device name changed to '$newName'. A restart is required for the change to take effect."
   }
   else {
-    Write-Host "No device name entered. Returning to main menu.'n'n"
+    Write-Host "No device name entered. Returning to main menu."
+    Write-Host ""
   }
   
 }
@@ -357,7 +367,8 @@ function ChoicePicker_Basic_Config {
   Enable-ComputerRestore -Drive "C:\"
 
 
-  Write-Host "Basic machine configuration completed.'n'n" -BackgroundColor Green
+  Write-Host "Basic machine configuration completed." -BackgroundColor Green
+  Write-Host ""
 }
 
 function Open-Windows-Tool {
@@ -366,14 +377,24 @@ function Open-Windows-Tool {
 
 function ChoicePicker_Windows_Update {
   Write-Host "Running Windows Update to install all pending updates..." -ForegroundColor Green
-  # 1. Install the module (if not already installed)
-  Install-Module -Name PSWindowsUpdate -Force
 
-  # 2. Import the module
-  Import-Module PSWindowsUpdate
+    # 0. Zorg dat NuGet automatisch wordt geaccepteerd
+    $nugetProvider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
+    if (-not $nugetProvider) {
+        Install-PackageProvider -Name NuGet -Force -Scope CurrentUser
+    }
 
-  # 3. Run all available updates, including optional ones
-  Get-WindowsUpdate -Install -AcceptAll -AutoReboot
+    # 1. Installeer de PSWindowsUpdate-module (indien nodig)
+    if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
+        Install-Module -Name PSWindowsUpdate -Force -Confirm:$false
+    }
+
+    # 2. Importeer de module
+    Import-Module PSWindowsUpdate
+
+    # 3. Voer alle beschikbare updates uit, inclusief optionele
+    Get-WindowsUpdate -Install -AcceptAll -AutoReboot
+
 }
 
 function Debug {

@@ -142,6 +142,9 @@ function functionPicker {
     11 {
       ChoicePicker_Adjust_User_Performance_Profile
     }
+    12 {
+      ChoicePicker_Configure_IPv4
+    }
     <# 11 {
       ChoicePicker_Enable_AD_Tools
     } #>
@@ -530,6 +533,45 @@ function ChoicePicker_Adjust_User_Performance_Profile {
   RUNDLL32.EXE user32.dll, UpdatePerUserSystemParameters
   
   Write-Host "User performance profile adjusted. Please reboot for all changes to apply." -ForegroundColor Green
+}
+
+function ChoicePicker_Configure_IPv4 {
+  #No error handling yet, use with caution
+  Write-Host "Configuring IPv4 settings..." -ForegroundColor Green
+  $interface = Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1
+
+  if ($null -eq $interface) {
+    Write-Host "No network adapter found with an active connection." -ForegroundColor Red
+    return
+  }
+
+  Write-Host "Network adapter "$interface.Name" found:" -ForegroundColor Green
+  Write-Hoste "1. Configure a static IP address" -ForegroundColor Yellow
+  Write-Host "2. Clear configuration (Dynamic)" -ForegroundColor Yellow
+  $choice = Read-Host "Choose an option (1 or 2)"
+
+  if ($choice -eq "2") {
+    Write-Host "Clearing IPv4 configuration to dynamic (DHCP)..." -ForegroundColor Green
+    Set-NetIPInterface -InterfaceAlias $interface.Name -Dhcp Enabled
+    Remove-NetIPAddress -InterfaceAlias $interface.Name -AddressFamily IPv4 -Confirm:$false
+    Write-Host "IPv4 configuration set to dynamic (DHCP)." -ForegroundColor Green
+    return
+  }elseif ($choice -eq 1) {
+    $ipAddress = Read-Host "Enter the static IP address 0.0.0.0"
+    $subnetMask = Read-Host "Enter the subnet mask"
+    $defaultgateway = Read-Host "Enter the default gateway"
+    $dnsServers = Read-Host "Enter the DNS servers (comma-separated if multiple)"
+
+    Write-Host "Configuring static IPv4 settings..." -ForegroundColor Green
+    New-NetIPAddress -InterfaceAlias $interface.Name -IPAddress $ipAddress -PrefixLength $subnetMask -DefaultGateway $defaultgateway
+    $dnsServerArray = $dnsServers -split ","
+    Set-DnsClientServerAddress -InterfaceAlias $interface.Name -ServerAddresses $dnsServerArray
+    Write-Host "Static IPv4 configuration applied." -ForegroundColor Green
+  }
+  else {
+    Write-host "Invalid choice. Skipping back to main menu" -ForegroundColor Red
+    return
+  }
 }
 
 #-----------------------------------------------------------[Execution]------------------------------------------------------------

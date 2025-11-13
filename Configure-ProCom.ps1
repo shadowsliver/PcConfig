@@ -366,6 +366,19 @@ function ChoicePicker_Basic_Config {
   # Enable system protection for C: drive
   Enable-ComputerRestore -Drive "C:\"
 
+  Write-Host "Editing the taskbar" -ForegroundColor Green
+  # Disable Search (0 = hidden, 1 = icon only, 2 = search box)
+  Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Value 0
+
+  # Disable Widgets ERROR: Currently blocked by windows, need to find a workaround
+  #Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value 0
+
+  # Disable Task View
+  Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowTaskViewButton" -Value 0
+
+  # Restart Explorer to apply changes
+  Stop-Process -Name explorer -Force
+  Start-Process explorer
 
   Write-Host "Basic machine configuration completed." -BackgroundColor Green
   Write-Host ""
@@ -378,22 +391,22 @@ function Open-Windows-Tool {
 function ChoicePicker_Windows_Update {
   Write-Host "Running Windows Update to install all pending updates..." -ForegroundColor Green
 
-    # 0. Zorg dat NuGet automatisch wordt geaccepteerd
-    $nugetProvider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
-    if (-not $nugetProvider) {
-        Install-PackageProvider -Name NuGet -Force -Scope CurrentUser
-    }
+  # 0. Zorg dat NuGet automatisch wordt geaccepteerd
+  $nugetProvider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
+  if (-not $nugetProvider) {
+    Install-PackageProvider -Name NuGet -Force -Scope CurrentUser
+  }
 
-    # 1. Installeer de PSWindowsUpdate-module (indien nodig)
-    if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
-        Install-Module -Name PSWindowsUpdate -Force -Confirm:$false
-    }
+  # 1. Installeer de PSWindowsUpdate-module (indien nodig)
+  if (-not (Get-Module -ListAvailable -Name PSWindowsUpdate)) {
+    Install-Module -Name PSWindowsUpdate -Force -Confirm:$false
+  }
 
-    # 2. Importeer de module
-    Import-Module PSWindowsUpdate
+  # 2. Importeer de module
+  Import-Module PSWindowsUpdate
 
-    # 3. Voer alle beschikbare updates uit, inclusief optionele
-    Get-WindowsUpdate -Install -AcceptAll -AutoReboot
+  # 3. Voer alle beschikbare updates uit, inclusief optionele
+  Get-WindowsUpdate -Install -AcceptAll -AutoReboot
 
 }
 
@@ -518,7 +531,7 @@ function ChoicePicker_Adjust_User_Performance_Profile {
   Write-Host "Adjusting user performance profile settings..." -ForegroundColor Green
 
   $check = $true
-  if( $quick -eq $true) {
+  if ( $quick -eq $true) {
     $check = $false
   }
   While ( $check -eq $true) {
@@ -578,7 +591,8 @@ function ChoicePicker_Configure_IPv4 {
     Remove-NetIPAddress -InterfaceAlias $interface.Name -AddressFamily IPv4 -Confirm:$false
     Write-Host "IPv4 configuration set to dynamic (DHCP)." -ForegroundColor Green
     return
-  }elseif ($choice -eq 1) {
+  }
+  elseif ($choice -eq 1) {
     $ipAddress = Read-Host "Enter the static IP address 0.0.0.0"
     $subnetMask = Read-Host "Enter the subnet mask"
     $defaultgateway = Read-Host "Enter the default gateway"

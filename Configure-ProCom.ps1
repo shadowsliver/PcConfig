@@ -93,6 +93,7 @@ function Run {
     Write-Host "10. Rename local user account name & rename user folder (Other user only!)"
     Write-host "11. Adjust user performance profile settings"
     #Write-Host "11. Install AD Components for Active Directory management related commands/scripts"
+    Write-Host "DEBUG: Type 'debug' to enter debug mode for Winget"
     Write-Host "0. Exit"
     Write-Host ""
     $choice = Read-Host "Choice"
@@ -382,7 +383,7 @@ function Debug {
     Write-Host "DEBUG MODE for application installer (Winget). Choose 0 to quit or press CTRL+C." -ForegroundColor Red -BackgroundColor Yellow
     Write-Host "1. Reregister Application Installer"
     Write-Host "2. Winget Update App Installer"
-    Write-Host "3. See Application Installer via Microsoft Store..."
+    Write-Host "3. See Application Installer via Microsoft Store (recommended first)"
     Write-Host "4. Reinstall Application Installer"
     Write-Host ""
     $choice = Read-Host "Choice"

@@ -168,7 +168,6 @@ function functionPicker {
     }
     3 {
       ChoicePicker_Update
-      
     }
     4 {
       ChoicePicker_Windows_Update
@@ -178,7 +177,6 @@ function functionPicker {
     }
     6 {
       ChoicePicker_Adjust_User_Performance_Profile
-      
     }
     7 {
       ChoicePicker_Current_User_No_pass
@@ -694,6 +692,7 @@ function ChoicePicker_Configure_IPv4 {
   }
 }
 
+#Automatic installation without a CSV
 function ChoicePicker_Install_Install_Folder {
   Write-Host "Installing all files in the ./install/ folder..." -ForegroundColor Cyan
   #check if install folder exists
@@ -712,31 +711,13 @@ function ChoicePicker_Install_Install_Folder {
     return
   }
 
-  <# TODO: Load in all configuration files from install folder if present #>
-  #Specific configuration for EyeFile
-  $eyefile = ""
-  try {
-    Get-ChildItem -Path "$installPath\config_eyefile.txt" -ErrorAction Stop | Out-Null
-    Write-Host "Using EyeFile configuration from: $installPath\config_eyefile.txt" -ForegroundColor Cyan
-    $eyefile = Get-ChildItem -Path "$installPath\config_eyefile.txt" -ErrorAction Stop | Select-Object -ExpandProperty FullName
-    $eyefile = Get-Content -Path $eyefile
-  }
-  catch {
-    Write-Host "Eyefile configuration not found" -ForegroundColor Yellow
-  }
-
-  $installPath = Join-Path -Path $PSScriptRoot -ChildPath "install"
+    $installPath = Join-Path -Path $PSScriptRoot -ChildPath "install"
   Write-Host "Install path: $installPath"
   $files = Get-ChildItem -Path $installPath -Filter *.exe
   foreach ($file in $files) {
     $filePath = $file.FullName
     Write-host "Installing: $filePath" -ForegroundColor Yellow
-    if ($file.Name -match "^eyefile.*\.exe$" -and $eyefile -ne "") {
-      Start-Process -FilePath $filePath -ArgumentList '/verysilent', $eyefile -Wait
-    }
-    else {
       Start-Process -FilePath $filePath -ArgumentList '/verysilent' -Wait
-    }
     Write-Host "Installed $($file.Name)" -ForegroundColor Green
   }
 
@@ -744,6 +725,8 @@ function ChoicePicker_Install_Install_Folder {
   Write-Host ""
   Write-Host ""
 }
+
+#Checks for the install/installations.csv
 function ChoicePicker_Install_Install_Folder_Dyn {
   
   #check if install folder exists

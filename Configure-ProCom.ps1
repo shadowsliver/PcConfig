@@ -98,11 +98,9 @@ function Run {
     Write-host "6. Adjust user performance profile settings"
     Write-Host "7. Disable password change on next login of current user"
     Write-Host "8. Create local admin user"
-    Write-Host "9. Install all executables in the ./install/ folder"
+    Write-Host "9. Change device name"
     Write-Host "10. Rename local user account name & rename user folder (Other user only!)"
-    Write-Host "11. Change device name"
-    Write-Host "12. Map network drives from ./config/netdrive.csv"
-    #Write-Host "11. Install AD Components for Active Directory management related commands/scripts"
+    Write-Host "11. Extra installs: Install folder executables, map network drives and create local users from config files"
     Write-Host "0. Exit"
     Write-Host ""
     Write-Host "Quick: Type 'quick' for the default configuration proccess"
@@ -150,24 +148,14 @@ function functionPicker {
       ChoicePicker_User
     }
     9 {
-      ChoicePicker_Install_Install_Folder
+      ChoicePicker_Change_Device_Name
     }
     10 {
       functionPicker_Rename_User
     }
     11 {
-      ChoicePicker_Change_Device_Name
+      ChoicePicker_Extra_installs
     }
-    12 {
-      ChoicePicker_Net_Stat_config
-    }
-    <#     12 {
-      ChoicePicker_Configure_IPv4
-    } #>
-
-    <# 11 {
-      ChoicePicker_Enable_AD_Tools
-    } #>
     "wintool" {
       Open-Windows-Tool
     }
@@ -218,37 +206,31 @@ function Quick_config {
   Write-Host "Basic software installation completed." -ForegroundColor Green
   Write-Host ""
 
-  Write-Host "Running Installation folder executables..." -ForegroundColor Yellow
-  ChoicePicker_Install_Install_Folder
-  Write-Host "Installation folder executables completed." -ForegroundColor Green
+  Write-Host "Updating all installed software via Winget..." -ForegroundColor Yellow
+  ChoicePicker_Update
+  Write-Host "All software updates completed." -ForegroundColor Green
   Write-Host ""
 
-  Write-Host  "Running Net Drive mapping from ./config/netdrive.csv..." -ForegroundColor Yellow
-  ChoicePicker_Net_Stat_config
-  Write-Host "Network drive mapping completed." -ForegroundColor Green
-  Write-Host ""
+  #if config or install folder exists, run extra installs
+  $checkConfig = Test-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath "config")
+  $checkInstall = Test-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath "install")
+  if ($checkConfig -eq $false -and $checkInstall -eq $false) {
+  Write-Host "Running extra installs from configuration files..." -ForegroundColor Yellow
+  ChoicePicker_Extra_installs
+  Write-Host "Extra installs completed." -ForegroundColor Green
+  }
 
   Write-Host "Installing Microsoft Office 365 with Dutch configuration..." -ForegroundColor Yellow
   ChoicePicker_Office
   Write-Host "Microsoft Office 365 installation completed." -ForegroundColor Green
   Write-Host ""
 
-  Write-Host "Disabling password change on next login for current user: $env:USERNAME" -ForegroundColor Yellow
-  ChoicePicker_Current_User_No_pass
-  Write-Host "Password disabled for user '$env:USERNAME'." -ForegroundColor Green
-  Write-Host ""
-
-  Write-Host "Updating all installed software via Winget..." -ForegroundColor Yellow
-  ChoicePicker_Update
-  Write-Host "All software updates completed." -ForegroundColor Green
-  Write-Host ""
-
   Write-Host "Applying windows updates..." -ForegroundColor Yellow
   ChoicePicker_Windows_Update
   Write-Host "Windows update process done. If there were any update errors the system wasn't rebooted" -ForegroundColor Green
   
-  Write-Host "-----------------------------------------" -ForegroundColor DarkMagenta backgroundColor White
-  Write-Host "Quick configuration completed. A reboot is recommended." -ForegroundColor Green backgroundColor White
+  Write-Host "-----------------------------------------" -ForegroundColor DarkMagenta -BackgroundColor White
+  Write-Host "Quick configuration completed. A reboot is recommended." -ForegroundColor Green -BackgroundColor White
   Write-Host ""
 }
 
@@ -286,19 +268,36 @@ function ChoicePicker_Software_Install {
 }
 
 function ChoicePicker_User {
-  $user = Read-Host "Enter a valid Username for the new local admin account"
-  $userFull = Read-Host "Enter the Full Name for the new local admin account (leave blank for no full name)"
-  $userPassword = Read-Host "Enter a Password for the new local admin account (leave blank for no password)"
+  param(
+    [string]$user = "",
+    [string]$userFull = "",
+    [SecureString] $userPassword = ""
+  )
+  if ($user -eq "") {
+    $user = Read-Host "Enter a valid Username for the new local admin account"
+    $userFull = Read-Host "Enter the Full Name for the new local admin account (leave blank for no full name)"
+    $userPassword = Read-Host "Enter a Password for the new local admin account (leave blank for no password)"
+  }
+  
   if ($userFull -eq "") {
     $userFull = $user
   }
+
+  $securePassword = ConvertTo-SecureString $userPassword -AsPlainText -Force
+
+  Write-Host "Creating local admin user '$user'...", $userfull, $userPassword
   # Create a local user with no password
-  if ($userPassword -ne "") {
-    $securePassword = ConvertTo-SecureString $userPassword -AsPlainText -Force
-    New-LocalUser -Name $user -Password $securePassword -FullName $userFull -PasswordNeverExpires $true -UserMayNotChangePassword $false
+  if ($userPassword -ne "") {    
+    write-Host "With password"
+    New-LocalUser -Name $user -Password $securePassword -FullName $userFull
+    Set-LocalUser -Name $user -PasswordNeverExpires $true
+
   }
   else {
-    New-LocalUser -Name $user -NoPassword -FullName $userFull -PasswordNeverExpires $true -UserMayNotChangePassword $false
+    write-Host "No password"
+    New-LocalUser -Name $user -NoPassword -FullName $userFull
+    Set-LocalUser -Name $user -PasswordNeverExpires $true
+
   }
   
   # Add the user to the Administrators group
@@ -701,6 +700,66 @@ function ChoicePicker_Install_Install_Folder {
   Write-Host ""
 }
 
+function ChoicePicker_Install_Install_Folder_Dyn {
+  
+  #check if install folder exists
+  $installPath = Join-Path -Path $PSScriptRoot -ChildPath "install"
+  $check = Test-Path -Path $installPath
+  if (-not $check) {
+    Write-Host "Install folder not found. Please ensure the 'install' folder exists in the script directory." -ForegroundColor Red
+    Write-Host ""
+    return
+  }
+  else {
+    Write-Host "Installing all files in $installPath..." -ForegroundColor Cyan
+  }
+
+  $csvPath = Join-Path -Path $PSScriptRoot -ChildPath 'install\installations.csv'
+  Write-Host "Reading CSV: $csvPath"
+
+  $check = $true
+  if (-not (Test-Path $csvPath)) {
+    Write-Host "CSV not found: $csvPath"
+    $check = $false
+  }
+  $rows = Import-Csv -Path $csvPath -Delimiter ";" -ErrorAction Stop
+
+  if ($rows.Count -eq 0) {
+    Write-Host "CSV is empty: $csvPath"
+    $check = $false
+  }
+
+  if ($check -eq $true) {
+    foreach ($row in $rows) {
+      $fileName = $row.software
+      $filePath = Join-Path -Path $installPath -ChildPath $row.file
+      $fileArguement = $row.arguments
+      if ($fileArguement -ne "") {
+        Start-Process -FilePath $filePath -ArgumentList '/verysilent', $fileArguement -Wait
+      }
+      else {
+        Start-Process -FilePath $filePath -ArgumentList '/verysilent' -Wait
+      }
+      Write-Host "Installed $FileName" -ForegroundColor Green  
+    }  
+  }
+
+  <# 
+  $installPath = Join-Path -Path $PSScriptRoot -ChildPath "install"
+  Write-Host "Install path: $installPath"
+  $files = Get-ChildItem -Path $installPath -Filter *.exe
+  foreach ($file in $files) {
+    $filePath = $file.FullName
+    Write-host "Installing: $filePath" -ForegroundColor Yellow
+    Start-Process -FilePath $filePath -ArgumentList '/verysilent' -Wait
+    Write-Host "Installed $($file.Name)" -ForegroundColor Green
+  }
+ #>
+  Write-Host "Install done!" -ForegroundColor Green -BackgroundColor White
+  Write-Host ""
+  Write-Host ""
+}
+
 function ChoicePicker_Net_Stat_config {
   # Read ./config/netdrive.csv (relative to this script) and write out path + drive letter
   $csvPath = Join-Path -Path $PSScriptRoot -ChildPath 'config\netdrive.csv'
@@ -721,6 +780,42 @@ function ChoicePicker_Net_Stat_config {
   foreach ($row in $rows) {
     Write-Host "Drive: $($row.Drive), Path: $($row.Path)"
     New-PSDrive -Name $row.Drive -PSProvider "FileSystem" -Root $row.Path -Persist
+  }
+}
+
+function ChoicePicker_Extra_installs {
+  Write-Host "Running Installation folder executables..." -ForegroundColor Yellow
+  ChoicePicker_Install_Install_Folder_Dyn
+  Write-Host "Installation folder executables completed." -ForegroundColor Green
+  Write-Host ""
+
+  Write-Host  "Running Net Drive mapping from ./config/netdrive.csv..." -ForegroundColor Yellow
+  ChoicePicker_Net_Stat_config
+  Write-Host "Network drive mapping completed." -ForegroundColor Green
+  Write-Host ""
+  
+  #Creating users
+  Write-Host "Creating local admin users..." -ForegroundColor Yellow
+  $csvPath = Join-Path -Path $PSScriptRoot -ChildPath 'config\users.csv'
+  Write-Host "Reading CSV: $csvPath"
+
+  $check = $true
+  if (-not (Test-Path $csvPath)) {
+    Write-Host "CSV not found: $csvPath"
+    $check = $false
+  }
+
+  $rows = Import-Csv -Path $csvPath -Delimiter ";" -ErrorAction Stop
+
+  if ($rows.Count -eq 0) {
+    Write-Host "CSV is empty: $csvPath"
+    $check = $false
+  }
+
+  if ($check -eq $true) {
+    foreach ($row in $rows) {
+      ChoicePicker_User -user $row.user -userFull $row.fullname -userPassword $row.password
+    }  
   }
 }
 

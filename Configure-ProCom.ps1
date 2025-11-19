@@ -215,9 +215,9 @@ function Quick_config {
   $checkConfig = Test-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath "config")
   $checkInstall = Test-Path -Path (Join-Path -Path $PSScriptRoot -ChildPath "install")
   if ($checkConfig -eq $false -and $checkInstall -eq $false) {
-  Write-Host "Running extra installs from configuration files..." -ForegroundColor Yellow
-  ChoicePicker_Extra_installs
-  Write-Host "Extra installs completed." -ForegroundColor Green
+    Write-Host "Running extra installs from configuration files..." -ForegroundColor Yellow
+    ChoicePicker_Extra_installs
+    Write-Host "Extra installs completed." -ForegroundColor Green
   }
 
   Write-Host "Installing Microsoft Office 365 with Dutch configuration..." -ForegroundColor Yellow
@@ -699,7 +699,6 @@ function ChoicePicker_Install_Install_Folder {
   Write-Host ""
   Write-Host ""
 }
-
 function ChoicePicker_Install_Install_Folder_Dyn {
   
   #check if install folder exists
@@ -744,17 +743,6 @@ function ChoicePicker_Install_Install_Folder_Dyn {
     }  
   }
 
-  <# 
-  $installPath = Join-Path -Path $PSScriptRoot -ChildPath "install"
-  Write-Host "Install path: $installPath"
-  $files = Get-ChildItem -Path $installPath -Filter *.exe
-  foreach ($file in $files) {
-    $filePath = $file.FullName
-    Write-host "Installing: $filePath" -ForegroundColor Yellow
-    Start-Process -FilePath $filePath -ArgumentList '/verysilent' -Wait
-    Write-Host "Installed $($file.Name)" -ForegroundColor Green
-  }
- #>
   Write-Host "Install done!" -ForegroundColor Green -BackgroundColor White
   Write-Host ""
   Write-Host ""
@@ -779,7 +767,10 @@ function ChoicePicker_Net_Stat_config {
 
   foreach ($row in $rows) {
     Write-Host "Drive: $($row.Drive), Path: $($row.Path)"
-    New-PSDrive -Name $row.Drive -PSProvider "FileSystem" -Root $row.Path -Persist
+    #New-PSDrive -Name $row.Drive -PSProvider "FileSystem" -Root $row.Path -Persist
+    $driveLetter = "$($row.Drive):"
+    $networkPath = $row.Path
+    net use $driveLetter $networkPath /persistent:yes
   }
 }
 

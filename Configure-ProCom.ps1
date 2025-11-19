@@ -444,7 +444,7 @@ function ChoicePicker_Basic_Config {
 
   Write-Host "Editing the taskbar" -ForegroundColor Green
   # Disable Search (0 = hidden, 1 = icon only, 2 = search box)
-  Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Value 0
+  Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search" -Name "SearchboxTaskbarMode" -Value 1
 
   # Disable Widgets ERROR: Currently blocked by windows, need to find a workaround
   #Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value 0

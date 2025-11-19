@@ -1,8 +1,3 @@
-param (
-  [switch] $Quick,
-  [switch] $Advanced,
-  [switch] $Debug
-)
 <#
 .SYNOPSIS
   Computer configuration script for ProCom
@@ -27,7 +22,15 @@ param (
   Configure-ProCom.ps1 -Quick
 #>
 
+
+param (
+  [switch] $Quick,
+  [switch] $Advanced,
+  [switch] $Debug
+)
+
 #---------------------------------------------------------[Initialisations]--------------------------------------------------------
+
 $AdminRequired = $true
 
 #----------------------------------------------------------[Declarations]----------------------------------------------------------

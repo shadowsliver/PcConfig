@@ -228,7 +228,6 @@ function Quick_config {
 
   Write-Host "Adjusting user performance profile settings for best performance..." -ForegroundColor Yellow
   ChoicePicker_Adjust_User_Performance_Profile -quick
-  Write-Host "User performance profile adjusted." -ForegroundColor Green
   Write-Host ""
 
   Write-Host "Installing basic software via Winget..." --ForegroundColor Yellow
@@ -447,6 +446,19 @@ function ChoicePicker_Basic_Config {
 
   # Disable Task View
   Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowTaskViewButton" -Value 0
+
+  Write-Host "Changing the user theme to Windows(light)"
+  # Enable Light theme for system and apps
+  Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name "SystemUsesLightTheme" -Value 1
+  Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name "AppsUseLightTheme" -Value 1
+
+  $themePath = "C:\Windows\Resources\Themes\aero.theme"
+  if (Test-Path $themePath) {
+    Start-Process $themePath
+  }
+  else {
+    Write-Host "Glow theme not found at $themePath"
+  }
 
   # Restart Explorer to apply changes
   Stop-Process -Name explorer -Force

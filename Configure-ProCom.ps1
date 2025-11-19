@@ -220,7 +220,7 @@ function Quick_config {
   Press_To_Continue -Message "Press any key to continue with quick configuration or CTRL+C to abort..."
   Write-Host ""
 
-  Write-Host "Starting quick configuration..." -ForegroundColor Black backgroundColor White
+  Write-Host "Starting quick configuration..." -ForegroundColor Black -BackgroundColor White
   Write-Host ""
 
   Write-Host "Setting up basic machine configuration..." -ForegroundColor Yellow

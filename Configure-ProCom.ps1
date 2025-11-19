@@ -89,20 +89,24 @@ function Run {
     Write-Host "Config script - choose an option. Choose 0 to quit or press CTRL+C."
     Write-Host "1. Install basic software"
     Write-Host "2. Install Microsoft Office 365 NL"
-    Write-Host "3. Create local admin user"
-    Write-Host "4. Disable password change on next login of current user"
-    Write-Host "5. Update all software via Winget"
-    Write-Host "6. Change device name"
-    Write-Host "7. Enable Windows updates and reboot"
-    Write-Host "8. Set up basic machine configuration"
-    Write-Host "9. Quick mode"
+    Write-Host "3. Update all software via Winget"
+    Write-Host "4. Enable Windows updates and reboot"
+    Write-Host "5. Set up basic machine configuration"
+    Write-host "6. Adjust user performance profile settings"
+    Write-Host "7. Disable password change on next login of current user"
+    Write-Host "8. Create local admin user"
+    Write-Host "9. Install all executables in the ./install/ folder"
     Write-Host "10. Rename local user account name & rename user folder (Other user only!)"
-    Write-host "11. Adjust user performance profile settings"
+    Write-Host "11. Change device name"
+    Write-Host "12. Map network drives from ./config/netdrive.csv"
     #Write-Host "11. Install AD Components for Active Directory management related commands/scripts"
     Write-Host "0. Exit"
+    Write-Host ""
+    Write-Host "Quick: Type 'quick' for the default configuration proccess"
     Write-Host "DEBUG: Type 'debug' to enter debug mode for Winget"
     Write-Host ""
     $choice = Read-Host "Choice"
+    Write-Host ""
 
     functionPicker -choice $choice
   }
@@ -123,35 +127,41 @@ function functionPicker {
       ChoicePicker_Office
     }
     3 {
-      ChoicePicker_User
+      ChoicePicker_Update
+      
     }
     4 {
-      ChoicePicker_Current_User_No_pass
-    }
-    5 {
-      ChoicePicker_Update
-    }
-    6 {
-      ChoicePicker_Change_Device_Name
-    }
-    7 {
       ChoicePicker_Windows_Update
     }
-    8 {
+    5 {
       ChoicePicker_Basic_Config
     }
+    6 {
+      ChoicePicker_Adjust_User_Performance_Profile
+      
+    }
+    7 {
+      ChoicePicker_Current_User_No_pass
+    }
+    8 {
+      ChoicePicker_User
+    }
     9 {
-      Quick_config
+      ChoicePicker_Install_Install_Folder
     }
     10 {
       functionPicker_Rename_User
     }
     11 {
-      ChoicePicker_Adjust_User_Performance_Profile
+      ChoicePicker_Change_Device_Name
     }
     12 {
-      ChoicePicker_Configure_IPv4
+      ChoicePicker_Net_Stat_config
     }
+    <#     12 {
+      ChoicePicker_Configure_IPv4
+    } #>
+
     <# 11 {
       ChoicePicker_Enable_AD_Tools
     } #>
@@ -161,9 +171,12 @@ function functionPicker {
     "debug" {
       Debug
     }
+    "quick" {
+      Quick_config
+    }
     default {
       Write-Host "Invalid choice. Please try again."
-      Write-Host "`n"
+      Write-Host ""
     }
   }
 }
@@ -200,6 +213,16 @@ function Quick_config {
     winget install --id $id -e --accept-source-agreements --accept-package-agreements
   }
   Write-Host "Basic software installation completed." -ForegroundColor Green
+  Write-Host ""
+
+  Write-Host "Running Installation folder executables..." -ForegroundColor Yellow
+  ChoicePicker_Install_Install_Folder
+  Write-Host "Installation folder executables completed." -ForegroundColor Green
+  Write-Host ""
+
+  Write-Host  "Running Net Drive mapping from ./config/netdrive.csv..." -ForegroundColor Yellow
+  ChoicePicker_Net_Stat_config
+  Write-Host "Network drive mapping completed." -ForegroundColor Green
   Write-Host ""
 
   Write-Host "Installing Microsoft Office 365 with Dutch configuration..." -ForegroundColor Yellow
@@ -621,6 +644,80 @@ function ChoicePicker_Configure_IPv4 {
   else {
     Write-host "Invalid choice. Skipping back to main menu" -ForegroundColor Red
     return
+  }
+}
+
+function ChoicePicker_Install_Install_Folder {
+  Write-Host "Installing all files in the ./install/ folder..." -ForegroundColor Cyan
+  #check if install folder exists
+  $installPath = Join-Path -Path $PSScriptRoot -ChildPath "install"
+  $check = Test-Path -Path $installPath
+  if (-not $check) {
+    Write-Host "Install folder not found. Please ensure the 'install' folder exists in the script directory." -ForegroundColor Red
+    Write-Host ""
+    return
+  }
+
+  $check = Get-ChildItem -Path $installPath -Filter *.exe
+  if ($check.Count -eq 0) {
+    Write-Host "No executable files found in the install folder." -ForegroundColor Red
+    Write-Host ""
+    return
+  }
+
+  <# TODO: Load in all configuration files from install folder if present #>
+  #Specific configuration for EyeFile
+  $eyefile = ""
+  try {
+    Get-ChildItem -Path "$installPath\config_eyefile.txt" -ErrorAction Stop | Out-Null
+    Write-Host "Using EyeFile configuration from: $installPath\config_eyefile.txt" -ForegroundColor Cyan
+    $eyefile = Get-ChildItem -Path "$installPath\config_eyefile.txt" -ErrorAction Stop | Select-Object -ExpandProperty FullName
+    $eyefile = Get-Content -Path $eyefile
+  }
+  catch {
+    Write-Host "Eyefile configuration not found" -ForegroundColor Yellow
+  }
+
+  $installPath = Join-Path -Path $PSScriptRoot -ChildPath "install"
+  Write-Host "Install path: $installPath"
+  $files = Get-ChildItem -Path $installPath -Filter *.exe
+  foreach ($file in $files) {
+    $filePath = $file.FullName
+    Write-host "Installing: $filePath" -ForegroundColor Yellow
+    if ($file.Name -match "^eyefile.*\.exe$" -and $eyefile -ne "") {
+      Start-Process -FilePath $filePath -ArgumentList '/verysilent', $eyefile -Wait
+    }
+    else {
+      Start-Process -FilePath $filePath -ArgumentList '/verysilent' -Wait
+    }
+    Write-Host "Installed $($file.Name)" -ForegroundColor Green
+  }
+
+  Write-Host "Install done!" -ForegroundColor Green -BackgroundColor White
+  Write-Host ""
+  Write-Host ""
+}
+
+function ChoicePicker_Net_Stat_config {
+  # Read ./config/netdrive.csv (relative to this script) and write out path + drive letter
+  $csvPath = Join-Path -Path $PSScriptRoot -ChildPath 'config\netdrive.csv'
+  Write-Host "Reading CSV: $csvPath"
+
+  if (-not (Test-Path $csvPath)) {
+    Write-Host "CSV not found: $csvPath"
+    return
+  }
+
+  $rows = Import-Csv -Path $csvPath -Delimiter ";" -ErrorAction Stop
+
+  if ($rows.Count -eq 0) {
+    Write-Host "CSV is empty: $csvPath"
+    return
+  }
+
+  foreach ($row in $rows) {
+    Write-Host "Drive: $($row.Drive), Path: $($row.Path)"
+    New-PSDrive -Name $row.Drive -PSProvider "FileSystem" -Root $row.Path -Persist
   }
 }
 

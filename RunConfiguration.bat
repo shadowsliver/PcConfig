@@ -7,4 +7,5 @@ if %errorlevel% neq 0 (
     exit /b
 )
 :: Run your PowerShell script
+:: powershell -Command "Set-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force"
 powershell.exe -ExecutionPolicy Bypass -File "%~dp0Configure-ProCom.ps1" %*

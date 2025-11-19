@@ -431,9 +431,16 @@ function ChoicePicker_Windows_Update {
   Write-Host "Running Windows Update to install all pending updates..." -ForegroundColor Green
 
   # 0. Zorg dat NuGet automatisch wordt geaccepteerd
+  # Ensure TLS 1.2 is used (required for secure downloads)
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+  # Trust the PSGallery repository
+  Set-PSRepository -Name "PSGallery" -InstallationPolicy Trusted
+
+  # Install NuGet provider silently
   $nugetProvider = Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue
   if (-not $nugetProvider) {
-    Install-PackageProvider -Name NuGet -Force -Scope CurrentUser
+    Install-PackageProvider -Name NuGet -Force -Scope CurrentUser -Confirm:$false
   }
 
   # 1. Installeer de PSWindowsUpdate-module (indien nodig)
@@ -445,8 +452,7 @@ function ChoicePicker_Windows_Update {
   Import-Module PSWindowsUpdate
 
   # 3. Voer alle beschikbare updates uit, inclusief optionele
-  Get-WindowsUpdate -Install -AcceptAll -AutoReboot
-
+  Get-WindowsUpdate -Install -AcceptAll -AutoReboot -Verbose
 }
 
 function Debug {

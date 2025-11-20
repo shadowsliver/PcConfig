@@ -453,12 +453,15 @@ function ChoicePicker_Basic_Config {
   Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name "AppsUseLightTheme" -Value 1
 
   $themePath = "C:\Windows\Resources\Themes\aero.theme"
-  if (Test-Path $themePath) {
+  try {
     Start-Process $themePath
+    Start-Sleep -Seconds 5
   }
-  else {
+  catch {
     Write-Host "Glow theme not found at $themePath"
   }
+    
+    
 
   # Restart Explorer to apply changes
   Stop-Process -Name explorer -Force
